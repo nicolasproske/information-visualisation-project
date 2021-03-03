@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>InfoVis Studienarbeit - Aufgabe 2.1</title>
+
+    <!-- CSS Datei einbinden -->
+    <link href="assets/css/style.css" rel="stylesheet">
+
+    <!-- D3.min.js einbinden -->
+    <script src="assets/js/d3.min.js" type="text/javascript"></script>
+    <noscript>JavaScript nicht erkannt!</noscript>
+</head>
+<body>
+
+<h1>Aufgabe 2.1 (Statisch)</h1>
+<h3>Studienarbeit Informationsvisualisierung (Nicolas Proske)</h3>
+
+<script>
+
+    let margin = {
+            top: 50,
+            right: 50,
+            bottom: 50,
+            left: 50
+        }, // Abstand der Zeichenflaeche zu Raendern
+        w = 600 - margin.left - margin.right, // Breite der Zeichenflaeche
+        h = 600 - margin.top - margin.bottom; // Hoehe der Zeichenflaeche
+
+    let r = 8; // Radius der Kreise
+    let maxScale = 500; // Maximale Wert des Sliders
+
+    let scaledData = [
+        {
+            x: 80,
+            y: 65,
+            count: 40
+        },
+        {
+            x: 25,
+            y: 40,
+            count: 5
+        },
+        {
+            x: 50,
+            y: 50,
+            count: 1
+        },
+        {
+            x: 20,
+            y: 15,
+            count: 20
+        }
+    ]; // Array zum Speichern der Kreispositionen mit deren Haeufigkeit
+
+    // Slider erstellen
+    d3.select("body").append("input")
+        .attr("type", "range")
+        .attr("min", "1")
+        .attr("max", maxScale)
+        .attr("value", "100")
+        .attr("id", "mySlider");
+
+    // Skalierung der x-Werte
+    let scaleX = d3.scaleLinear()
+        .domain([0, d3.select("#mySlider").property("value")])
+        .range([0, w]);
+
+    // Skalierung der y-Werte
+    let scaleY = d3.scaleLinear()
+        .domain([0, d3.select("#mySlider").property("value")])
+        .range([0, h]);
+
+    // Erstellen der SVG-Zeichenflaeche
+    let svg = d3.select("body").append("svg")
+        .attr("width", w + margin.left + margin.right)
+        .attr("height", h + margin.top + margin.bottom)
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+        .attr("id", "ebene");
+
+    // Zeichnen der x-Achse
+    d3.select("#ebene").append("g")
+        .attr("transform", "translate(" + margin.left + "," + (margin.top) + ")")
+        .call(d3.axisTop(scaleX).tickSize(-h)) // tickSize = Hilfsslinien
+        .attr("opacity", .5);
+
+    // Zeichnen der y-Achse
+    d3.select("#ebene").append("g")
+        .attr("transform", "translate(" + margin.left + ", " + margin.top + ")")
+        .call(d3.axisLeft(scaleY).tickSize(-w))
+        .attr("opacity", .5);
+
+    // Beschriftung y-Achse
+    d3.select("#ebene").append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("text-anchor", "middle")
+        .attr("y", (margin.left / 2) - 10)
+        .attr("x", -(h / 2) - 50)
+        .attr("font-family", "sans-serif")
+        .attr("font-size", "14px")
+        .text("Y-Werte");
+
+    // Beschriftung x-Achse
+    d3.select("#ebene").append("text")
+        .attr("text-anchor", "middle")
+        .attr("x", (w / 2) + margin.left)
+        .attr("y", margin.top - 30)
+        .attr("font-family", "sans-serif")
+        .attr("font-size", "14px")
+        .text("X-Werte");
+
+    // Change-Event, falls Sliderwert geaendert wird
+    d3.select("#mySlider")
+        .on("change", scaleData);
+
+
+    /*
+        Zeichnen der Kreise beim Laden des Scripts (faellt bei dynamischer Erzeugung weg)
+     */
+
+    let value1 = d3.select("#mySlider").property("value"); // Aktuellen Slider-Wert bekommen
+    let newValue1 = (w / value1); // Berechnung des "Faktors" der Skalierung
+
+    // Zeichnen der Kreise, welche nur einmal vorhanden sind
+    d3.select("#ebene")
+        .selectAll("circle")
+        .data(scaledData) // Databinding - scaledData-Array
+        .enter()
+        .append("circle")
+        .attr("cx", function (d) {
+            return d.x * newValue1 + margin.left; // Um richtige Position zu erreichen, muss der Abstand zu den Raendern addiert werden
+        })
+        .attr("cy", function (d) {
+            return d.y * newValue1 + margin.top;
+        })
+        .attr("r", r)
+        .style("fill", "#5bd1d7")
+        .style("opacity", function (d) { // Falls gezeichneter Kreis ausserhalb des Koordinatensystems liegt -> unsichtbar machen (opacity = 0)
+            let valueX = d.x * newValue1 + margin.left;
+            let valueY = d.y * newValue1 + margin.top;
+            if ((valueX > w + margin.left)
+                || (valueY > h + margin.top)) {
+                return 0;
+            }
+        });
+
+    /* ----------------------
+            SUNFLOWER
+     ---------------------- */
+
+    let lineLength = 15; // Laenge der Linien
+    let lineStrokeWidth = 2; // Breite der Linien
+
+    for (let k = 0; k < scaledData.length; k++) { // Groesse des scaledData-Arrays fuer spaeteren "count"-Zaehler (naechste for-Schleife)
+        for (let j = 0; j < scaledData[k].count; j++) { // For-Schleife fuer richtige Linienanordnung (Verwendung nut bei "rotate" von ".attr("transform")")
+            d3.select("#ebene")
+                .selectAll(".line")
+                .data(scaledData) // Databinding
+                .enter()
+                .append("line")
+                .attr("x1", function (d) {
+                    return (d.x * newValue1 + margin.left); // Zentrum x-Wert
+                })
+                .attr("y1", function (d) {
+                    return (d.y * newValue1 + margin.left); // Zentrum y-Wert
+                })
+                .attr("x2", function (d) {
+                    return ((d.x * newValue1 + margin.left) + lineLength); // Endpunkt x-Wert
+                })
+                .attr("y2", function (d) {
+                    return ((d.y * newValue1 + margin.top) + lineLength); // Endpunkt y-Wert
+                })
+                .attr("transform", function (d) {
+                    return "rotate(" + (j * (360 / d.count)) + ", " + (d.x * newValue1 + margin.left) + ", " + (d.y * newValue1 + margin.top) + ")"; // Positionierung durch Rotation um Zentrum
+                })
+                .attr("opacity", function (d) {
+                    if (d.count < 2) { // Falls die Haeufigkeit kleiner 2 ist -> Linien unsichtbar machen
+                        return 0;
+                    }
+                })
+                .attr("stroke-width", lineStrokeWidth)
+                .attr("stroke", "#5bd1d7");
+        }
+    }
+
+
+    // Funktion scaleData (Anwendung bei Slider-aenderung)
+    function scaleData() {
+        let value = d3.select("#mySlider").property("value"); // Aktuellen Slider-Wert bekommen
+
+        let newValue = (w / value); // Berechnung des "Faktors" der Skalierung
+
+        // Aktualisieren der Koordinaten mit Faktor von "newValue"
+        for (let i = 0; i < scaledData.length; i++) {
+            scaledData[i] = {
+                x: Math.round((scaledData[i].x / newValue * newValue)),
+                y: Math.round((scaledData[i].y / newValue * newValue)),
+                count: scaledData[i].count
+            };
+        }
+
+        // Aktualisierte Skalierung der x-Werte
+        scaleX = d3.scaleLinear()
+            .domain([0, value])
+            .range([0, w]);
+
+        // Aktualisierte Skalierung der y-Werte
+        scaleY = d3.scaleLinear()
+            .domain([0, value])
+            .range([0, h]);
+
+        // Loeschen der alten Elemente, um diese neu zeichnen zu koennen
+        d3.select("#ebene").selectAll("g").remove();
+        d3.select("#ebene").selectAll("circle").remove();
+        d3.select("#ebene").selectAll("line").remove();
+
+        // Zeichnen der x-Achse mit neuen Werten
+        d3.select("#ebene").append("g")
+            .attr("transform", "translate(" + margin.left + "," + (margin.top) + ")")
+            .call(d3.axisTop(scaleX).tickSize(-h))
+            .attr("opacity", .5);
+
+        // Zeichnen der y-Achse mit neuen Werten
+        d3.select("#ebene").append("g")
+            .attr("transform", "translate(" + margin.left + ", " + margin.top + ")")
+            .call(d3.axisLeft(scaleY).tickSize(-w))
+            .attr("opacity", .5);
+
+        // Zeichnen der Kreise mit neuen Werten
+        d3.select("#ebene")
+            .selectAll("circle")
+            .data(scaledData) // Databinding - scaledData-Array
+            .enter()
+            .append("circle")
+            .attr("cx", function (d) {
+                return d.x * newValue + margin.left; // Um richtige Position zu erreichen, muss der Abstand zu den Raendern addiert werden
+            })
+            .attr("cy", function (d) {
+                return d.y * newValue + margin.top;
+            })
+            .attr("r", r)
+            .style("fill", "#5bd1d7")
+            .style("opacity", function (d) { // Falls gezeichneter Kreis ausserhalb des Koordinatensystems liegt -> unsichtbar machen (opacity = 0)
+                let valueX = d.x * newValue + margin.left;
+                let valueY = d.y * newValue + margin.top;
+                if ((valueX > w + margin.left)
+                    || (valueY > h + margin.top)) {
+                    return 0;
+                }
+            });
+
+        /* ----------------------
+                SUNFLOWER
+        ---------------------- */
+
+        let lineLength = 15; // Laenge der Linien
+        let lineStrokeWidth = 2; // Breite der Linien
+
+        for (let k = 0; k < scaledData.length; k++) { // Groesse des scaledData-Arrays fuer spaeteren "count"-Zaehler (naechste for-Schleife)
+            for (let j = 0; j < scaledData[k].count; j++) { // For-Schleife fuer richtige Linienanordnung (Verwendung nut bei "rotate" von ".attr("transform")")
+                d3.select("#ebene")
+                    .selectAll(".line")
+                    .data(scaledData) // Databinding
+                    .enter()
+                    .append("line")
+                    .attr("x1", function (d) {
+                        return (d.x * newValue + margin.left); // Zentrum x-Wert
+                    })
+                    .attr("y1", function (d) {
+                        return (d.y * newValue + margin.left); // Zentrum y-Wert
+                    })
+                    .attr("x2", function (d) {
+                        return ((d.x * newValue + margin.left) + lineLength); // Endpunkt x-Wert
+                    })
+                    .attr("y2", function (d) {
+                        return ((d.y * newValue + margin.top) + lineLength); // Endpunkt y-Wert
+                    })
+                    .attr("transform", function (d) {
+                        return "rotate(" + (j * (360 / d.count)) + ", " + (d.x * newValue + margin.left) + ", " + (d.y * newValue + margin.top) + ")"; // Positionierung durch Rotation um Zentrum
+                    })
+                    .attr("opacity", function (d) {
+                        if (d.count < 2) { // Falls die Haeufigkeit kleiner 2 ist -> Linien unsichtbar machen
+                            return 0;
+                        }
+                    })
+                    .attr("stroke-width", lineStrokeWidth)
+                    .attr("stroke", "#5bd1d7");
+            }
+        }
+    }
+
+</script>
+
+</body>
+</html>

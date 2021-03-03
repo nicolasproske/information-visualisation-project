@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>InfoVis Studienarbeit - Aufgabe 1.4</title>
+
+    <!-- CSS Datei einbinden -->
+    <link href="assets/css/style.css" rel="stylesheet">
+
+    <!-- D3.min.js einbinden -->
+    <script src="assets/js/d3.min.js" type="text/javascript"></script>
+    <noscript>JavaScript nicht erkannt!</noscript>
+</head>
+<body>
+
+<h1>Aufgabe 1.4</h1>
+<h3>Studienarbeit Informationsvisualisierung (Nicolas Proske)</h3>
+
+<script>
+
+    let graphDict = {
+        Start: [
+            ["Gerald"],
+            ["Kerstin"],
+            ["Josef"]
+        ],
+
+        Gerald: [
+            ["arbeit.doc", 3452289],
+            ["konto.txt", 8785998],
+            ["debian.iso", 6693947],
+            ["MP3"]
+        ],
+        "arbeit.doc": [],
+        "konto.txt": [],
+        "debian.iso": [],
+        MP3: [
+            ["deathmetal.mp3", 4875938],
+            ["rock.mp3", 8473944],
+            ["house.mp3", 8847387],
+            ["trance.ogg", 6384639],
+            ["chillout.mp3", 8839192]
+        ],
+        "deathmetal.mp3": [],
+        "rock.mp3": [],
+        "house.mp3": [],
+        "trance.ogg": [],
+        "chillout.mp3": [],
+
+        Kerstin: [
+            ["javakurs.xls", 759283],
+            ["privat.log", 9238238],
+            ["video"]
+        ],
+        "javakurs.xls": [],
+        "privat.log": [],
+        video: [
+            ["harrypotter.mp4", 7465398],
+            ["terminator.mp4", 9828739],
+            ["stirblangsam.mp4", 6392738]
+        ],
+        "harrypotter.mp4": [],
+        "terminator.mp4": [],
+        "stirblangsam.mp4": [],
+
+        Josef: [
+            ["steam.exe", 7598984],
+            ["serien"]
+        ],
+        "steam.exe": [],
+        serien: [
+            ["startrek"],
+            ["starwars"]
+        ],
+        startrek: [
+            ["ss01.mp4", 848938],
+            ["ss02.mp4", 848482],
+            ["ss03.mp4", 829183],
+            ["ss04.mp4", 819234]
+        ],
+        "ss01.mp4": [],
+        "ss02.mp4": [],
+        "ss03.mp4": [],
+        "ss04.mp4": [],
+        starwars: [
+            ["sw01.mp4", 8118209],
+            ["sw02.mp4", 8181093],
+            ["sw03.mp4", 9111947]
+        ],
+        "sw01.mp4": [],
+        "sw02.mp4": [],
+        "sw03.mp4": []
+    };
+
+    function BFS(graph, startKnoten) {
+
+        // Ueberpruefen, ob angegebener Startknoten in "graph" enthalten ist, um Fehler zu vermeiden
+        if (!(startKnoten in graph)) {
+            console.log("%cFehler: Breitensuche konnte nicht durchgefuehrt werden.", "color: crimson");
+            console.log("%cDer angegebene Startknoten \"%c" + startKnoten + "%c\" existiert nicht!", "color: #34495E", "color: #3498DB", "color: #34495E");
+            return;
+        }
+
+        // Anlegen von Arrays zum Speichern der Informationen, welche bei der Breitensuche auftreten
+        let momentaneKnoten = [];
+        let besuchteKnoten = [];
+        let adjKnoten = graph[startKnoten]; // Abrufen und Speichern der adjazenten Knoten des Startknotens
+        let ebene = 1; // Festlegen der Startebene
+
+        // Hinzufuegen der adjazenten Knoten (Knotenname + Ebene) des Startknotens zur Liste der "momentan entdeckten & noch nicht besuchten Knoten"
+        for (let i = 0; i < adjKnoten.length; i++) {
+            momentaneKnoten.push([adjKnoten[i], ebene]);
+        }
+
+        // Solange jeden "momentan entdeckten & noch nicht besuchten Knoten", bis alle Knoten besucht wurden
+        while (momentaneKnoten.length > 0) {
+            let neuerKnoten = momentaneKnoten.shift(); // Herausloeschen des 1. Elements (= aktuell zu bearbeitender Knoten) aus MomentaneKnoten-Liste
+
+            let knotenId = neuerKnoten[0][0]; // Name des aktuellen Knotens abrufen & speichern
+            adjKnoten = graph[knotenId]; // Adjazente Knoten des aktuellen Knotens speichern
+
+            let aktEbene = neuerKnoten[1]; // Ebene des aktuellen Knotens abrufen & speichern
+
+            // Falls die aktuelle Ebene gleich der Ebene des aktuellen Knotens ist -> Ebene eins hochzaehlen
+            if (aktEbene === ebene) {
+                ebene += 1;
+            }
+
+            // Hinzufuegen der adjazenten Knoten (Knotenname + Ebene) des aktuellen Knotens zur Liste der "momentan entdeckten & noch nicht besuchten Knoten"
+            for (let i = 0; i < adjKnoten.length; i++) {
+                momentaneKnoten.push([adjKnoten[i], ebene]);
+            }
+            besuchteKnoten.push(neuerKnoten); // gerade abgearbeiteter Knoten zu BesuchteKnoten-Liste hinzufuegen
+        }
+        console.log("%cBreitensuche ab dem Knoten \"" + startKnoten + "\" erfolgreich abgeschlossen.", "color: #2ECC71");
+        console.log("%cEs wurden insgesamt %c" + besuchteKnoten.length + " %cKnoten auf %c" + ebene + " %cEbenen verteilt gefunden!", "color: #34495E", "color: #3498DB", "color: #34495E", "color: #3498DB", "color: #34495E");
+
+        /* ------------
+            SUNBURST
+        ------------ */
+
+        let sunburstInfo = []; // Anlegen eines Arrays zum Speichern der fuer das Sunburst-Diagramm relevanten Informationen
+        let sunburstSizes = {}; // Anlegen eines Arrays zum Speichern der Ordnergroessen
+
+        // Berechnung und Speichern der Ordnergroessen
+        const keys = Object.keys(graph);
+
+        for (const folder of keys) {
+            if (!folder.includes(".")) { // Abfrage, ob es sich um einen Ordner handelt
+                sunburstSizes[folder] = BFS_Size(graph, folder);
+            }
+        }
+
+        // SunburstInfo mit relevanten Informationen fuellen, solange die besuchte Knoten-Liste nicht leer sind
+        while (besuchteKnoten.length > 0) {
+            let neuerKnoten = besuchteKnoten.shift();
+
+            if (!(neuerKnoten[0][0].includes("."))) { // Abfrage, ob es sich um einen Ordner handelt
+                sunburstInfo.push([neuerKnoten[0][0].toString(), neuerKnoten[1], sunburstSizes[neuerKnoten[0][0].toString()], "Folder", (neuerKnoten[1] * 50), (neuerKnoten[1] * 50 + 50)]); // @param: Name, Ebene, Groesse, Typ, innerer Radius, aeusserer Radius
+            } else {
+                sunburstInfo.push([neuerKnoten[0][0].toString(), neuerKnoten[1], neuerKnoten[0][1], "File", (neuerKnoten[1] * 50), (neuerKnoten[1] * 50 + 50)]); // @param: Name, Ebene, Groesse, Typ, innerer Radius, aeusserer Radius
+            }
+        }
+
+        let angles = {}; // Anlegen eines Objekts zum Speichern der Winkelanteile
+
+        /*
+            Wichtige Information: Hierbei handelt es sich NICHT um eine voll-algorithmische Berechnung der Winkel auf Basis der Breitensuche.
+            Das ist allerdings eine "Notloesung" und nicht der "leichteste Weg", denn ich habe viele Versuche und auch viel Zeit hineingesteckt
+            und trotzdem wollte es schlussendlich nicht funktionieren. Letzendlich wurde der Zeitaufwand zu gross, sodass ich mich fuer diese Art
+            der Loesung entschieden habe. Trotz alledem werden die Winkel automatisch berechnet, lediglich bei Hinzufuegen neuer Elemente werden
+            diese nicht beruecksichtigt.
+         */
+
+        // --------- EBENE 1 --------- //
+
+        let totalSize = 0, // Variable zum Speichern der im Ordner enthaltenen Dateien
+            fromEbene = 1; // Ebene der Elemente
+
+        let ebeneItemsArr = []; // Array, welches die Unterelemente des Hauptelements mit den dazugehoerigen Daten aus der SunburstInfo-Liste speichert
+
+        // Berechnung der Gesamtgroesse & Hinzufuegen der Elemente zu ebeneItemsArr
+        for (let d = 0; d < sunburstInfo.length; d++) {
+            if (sunburstInfo[d][1] === fromEbene) {
+                totalSize += sunburstInfo[d][2];
+                ebeneItemsArr.push(sunburstInfo[d]);
+            }
+        }
+
+        // Berechnung der Winkel auf Basis der Daten von ebeneItemsArr
+        // angles[Knoten] = [Startwinkel, (Groesse in Bytes / Gesamtgroesse) * Gesamtwinkel];
+        angles["Gerald"] = [0, (ebeneItemsArr[0][2] / totalSize) * 360];
+        angles["Kerstin"] = [angles["Gerald"][1], angles["Gerald"][1] + (ebeneItemsArr[1][2] / totalSize) * 360];
+        angles["Josef"] = [angles["Kerstin"][1], angles["Kerstin"][1] + (ebeneItemsArr[2][2] / totalSize) * 360];
+
+        // --------- EBENE 2 --------- //
+
+        totalSize = 0;
+        fromEbene = 2;
+
+        ebeneItemsArr = [];
+
+        for (let d = 0; d < sunburstInfo.length; d++) {
+            if (sunburstInfo[d][1] === fromEbene) {
+                totalSize += sunburstInfo[d][2];
+                ebeneItemsArr.push(sunburstInfo[d]);
+            }
+        }
+
+        let angle = 360; // Gesamtbreite/Gesamtwinkel festlegen
+
+        angles["arbeit.doc"] = [0, (ebeneItemsArr[0][2] / totalSize) * angle];
+        angles["konto.txt"] = [angles["arbeit.doc"][1], angles["arbeit.doc"][1] + (ebeneItemsArr[1][2] / totalSize) * angle];
+        angles["debian.iso"] = [angles["konto.txt"][1], angles["konto.txt"][1] + (ebeneItemsArr[2][2] / totalSize) * angle];
+        angles["MP3"] = [angles["debian.iso"][1], angles["debian.iso"][1] + (ebeneItemsArr[3][2] / totalSize) * angle];
+        angles["javakurs.xls"] = [angles["MP3"][1], angles["MP3"][1] + (ebeneItemsArr[4][2] / totalSize) * angle];
+        angles["privat.log"] = [angles["javakurs.xls"][1], angles["javakurs.xls"][1] + (ebeneItemsArr[5][2] / totalSize) * angle];
+        angles["video"] = [angles["privat.log"][1], angles["privat.log"][1] + (ebeneItemsArr[6][2] / totalSize) * angle];
+        angles["steam.exe"] = [angles["video"][1], angles["video"][1] + (ebeneItemsArr[7][2] / totalSize) * angle];
+        angles["serien"] = [angles["steam.exe"][1], angles["steam.exe"][1] + (ebeneItemsArr[8][2] / totalSize) * angle];
+
+        // --------- EBENE 3 - MP3 --------- //
+
+        totalSize = 0;
+        ebeneItemsArr = [];
+
+        for (let d = 0; d < sunburstInfo.length; d++) {
+            if (sunburstInfo[d][0].includes(".mp3") || sunburstInfo[d][0].includes(".ogg")) {
+                totalSize += sunburstInfo[d][2];
+                ebeneItemsArr.push(sunburstInfo[d]);
+            }
+        }
+
+        angle = angles["MP3"][1] - angles["MP3"][0];
+
+        angles["deathmetal.mp3"] = [angles["MP3"][0], angles["MP3"][0] + (ebeneItemsArr[0][2] / totalSize) * angle];
+        angles["rock.mp3"] = [angles["deathmetal.mp3"][1], angles["deathmetal.mp3"][1] + (ebeneItemsArr[1][2] / totalSize) * angle];
+        angles["house.mp3"] = [angles["rock.mp3"][1], angles["rock.mp3"][1] + (ebeneItemsArr[2][2] / totalSize) * angle];
+        angles["trance.ogg"] = [angles["house.mp3"][1], angles["house.mp3"][1] + (ebeneItemsArr[3][2] / totalSize) * angle];
+        angles["chillout.mp3"] = [angles["trance.ogg"][1], angles["trance.ogg"][1] + (ebeneItemsArr[4][2] / totalSize) * angle];
+
+        // --------- EBENE 3 - video --------- //
+
+        totalSize = 0;
+        fromEbene = 3;
+        ebeneItemsArr = [];
+
+        for (let d = 0; d < sunburstInfo.length; d++) {
+            if (sunburstInfo[d][0].includes(".mp4") && sunburstInfo[d][1] === fromEbene) {
+                totalSize += sunburstInfo[d][2];
+                ebeneItemsArr.push(sunburstInfo[d]);
+            }
+        }
+
+        angle = angles["video"][1] - angles["video"][0];
+
+        angles["harrypotter.mp4"] = [angles["video"][0], angles["video"][0] + (ebeneItemsArr[0][2] / totalSize) * angle];
+        angles["terminator.mp4"] = [angles["harrypotter.mp4"][1], angles["harrypotter.mp4"][1] + (ebeneItemsArr[1][2] / totalSize) * angle];
+        angles["stirblangsam.mp4"] = [angles["terminator.mp4"][1], angles["terminator.mp4"][1] + (ebeneItemsArr[2][2] / totalSize) * angle];
+
+
+        // --------- EBENE 3 - serien --------- //
+
+        totalSize = 0;
+        fromEbene = 3;
+        ebeneItemsArr = [];
+
+        for (let d = 0; d < sunburstInfo.length; d++) {
+            if (!sunburstInfo[d][0].includes(".") && sunburstInfo[d][1] === fromEbene) {
+                totalSize += sunburstInfo[d][2];
+                ebeneItemsArr.push(sunburstInfo[d]);
+            }
+        }
+
+        angle = angles["serien"][1] - angles["serien"][0];
+
+        angles["startrek"] = [angles["serien"][0], angles["serien"][0] + (ebeneItemsArr[0][2] / totalSize) * angle];
+        angles["starwars"] = [angles["startrek"][1], angles["startrek"][1] + (ebeneItemsArr[1][2] / totalSize) * angle];
+
+        // --------- EBENE 4 - startrek --------- //
+
+        totalSize = 0;
+        ebeneItemsArr = [];
+
+        for (let d = 0; d < sunburstInfo.length; d++) {
+            if (sunburstInfo[d][0].includes("ss")) {
+                totalSize += sunburstInfo[d][2];
+                ebeneItemsArr.push(sunburstInfo[d]);
+            }
+        }
+
+        angle = angles["startrek"][1] - angles["startrek"][0];
+
+        angles["ss01.mp4"] = [angles["startrek"][0], angles["startrek"][0] + (ebeneItemsArr[0][2] / totalSize) * angle];
+        angles["ss02.mp4"] = [angles["ss01.mp4"][1], angles["ss01.mp4"][1] + (ebeneItemsArr[1][2] / totalSize) * angle];
+        angles["ss03.mp4"] = [angles["ss02.mp4"][1], angles["ss02.mp4"][1] + (ebeneItemsArr[2][2] / totalSize) * angle];
+        angles["ss04.mp4"] = [angles["ss03.mp4"][1], angles["ss03.mp4"][1] + (ebeneItemsArr[3][2] / totalSize) * angle];
+
+        // --------- EBENE 4 - starwars --------- //
+
+        totalSize = 0;
+        ebeneItemsArr = [];
+
+        for (let d = 0; d < sunburstInfo.length; d++) {
+            if (sunburstInfo[d][0].includes("sw")) {
+                totalSize += sunburstInfo[d][2];
+                ebeneItemsArr.push(sunburstInfo[d]);
+            }
+        }
+
+        angle = angles["starwars"][1] - angles["starwars"][0];
+
+        angles["sw01.mp4"] = [angles["starwars"][0], angles["starwars"][0] + (ebeneItemsArr[0][2] / totalSize) * angle];
+        angles["sw02.mp4"] = [angles["sw01.mp4"][1], angles["sw01.mp4"][1] + (ebeneItemsArr[1][2] / totalSize) * angle];
+        angles["sw03.mp4"] = [angles["sw02.mp4"][1], angles["sw02.mp4"][1] + (ebeneItemsArr[2][2] / totalSize) * angle];
+
+        for (let b = 0; b < sunburstInfo.length; b++) {
+            let aktKnoten = sunburstInfo[b][0];
+            sunburstInfo[b].push(angles[aktKnoten]);
+        }
+
+        // --------- ENDE Winkelberechnung --------- //
+
+        // Zeichnen des Sunburst-Diagramms
+
+        let w = 600, // Breite der Zeichenflaeche
+            h = 600; // Hoehe der Zeichenflaeche
+
+        // Erstellen der SVG-Zeichenflaeche
+        let svg = d3.select("body").append("svg")
+            .attr("width", w)
+            .attr("height", h);
+
+        // Zeichnen (ohne D3-Databinding - funktioniert nicht) - deshalb mit for-Schleife
+        for (let x = 0; x < sunburstInfo.length; x++) {
+            svg.append("path") // Pfad erstellen
+                .attr("transform", "translate(" + w / 2 + "," + h / 2 + ")") // Mittig positionieren
+                .attr("d", d3.arc()
+                    .innerRadius(sunburstInfo[x][4]) // Inneren Radius (entspricht grob gesagt der aktuellen Ebene)
+                    .outerRadius(sunburstInfo[x][5]) // aeusseren Radius
+                    .startAngle(sunburstInfo[x][6][0] * (Math.PI / 180)) // Startwinkel
+                    .endAngle(sunburstInfo[x][6][1] * (Math.PI / 180)) // Endwinkel
+                )
+                .attr('fill', function () { // Segmente faerben
+                    if (sunburstInfo[x][3] === "Folder") { // Falls aktuelles Segment ein Ordner ist
+                        if (sunburstInfo[x][1] === 1) { // Ebene abfragen und abhaengig davon einfaerben
+                            return "#004d61";
+                        } else if (sunburstInfo[x][1] === 2) {
+                            return "#348498";
+                        } else if (sunburstInfo[x][1] === 3) {
+                            return "#5bd1d7";
+                        } else if (sunburstInfo[x][1] === 4) {
+                            return "#b0f4e6";
+                        }
+                    } else { // Falls aktuelles Segment eine Datei ist -> Grau faerben
+                        return "#c0c0c0";
+                    }
+                })
+                .attr("stroke", "#fff") // Weisser "Abstand" zw. Segmenten
+                .style("stroke-width", "2px") // "Abstand" zw. Segmenten
+                .on("mouseover", function () { // Mausevent beim Hovern über dem Element
+                    d3.select("body").append("div") // Hinzufügen des Gerüsts für das "Tooltip" (HTML-Overlay)
+                        .style("position", "absolute")
+                        .style("background", function () { // Hintergrund gleich wie Elementfarbe färben
+                            if (sunburstInfo[x][3] === "Folder") { // Falls aktuelles Segment ein Ordner ist
+                                if (sunburstInfo[x][1] === 1) { // Ebene abfragen und abhaengig davon einfaerben
+                                    return "#004d61";
+                                } else if (sunburstInfo[x][1] === 2) {
+                                    return "#348498";
+                                } else if (sunburstInfo[x][1] === 3) {
+                                    return "#5bd1d7";
+                                } else if (sunburstInfo[x][1] === 4) {
+                                    return "#b0f4e6";
+                                }
+                            } else { // Falls aktuelles Segment eine Datei ist -> Grau faerben
+                                return "#c0c0c0";
+                            }
+                        })
+                        .attr("class", "tooltip") // Klasse für CSS hinzufügen
+                        .html("<b>Name:</b> " + sunburstInfo[x][0] + "<br>" + "<b>Ebene:</b> " + sunburstInfo[x][1] + "<br>" + "<b>Größe:</b> " + (sunburstInfo[x][2] / Math.pow(10, 6)).toFixed(2) + " Megabyte"); // Informationen, welche angezeigt werden sollen
+                })
+                .on("mousemove", function () { // Mausevent beim Bewegen der Maus über dem Element (sodass das "Tooltip" immer neben der Maus ist)
+                    d3.select(".tooltip")
+                        .style("top", (event.pageY - 20) + "px") // Position festlegen (20 Pixel neben dem Mauszeiger)
+                        .style("left", (event.pageX + 20) + "px");
+                })
+                .on("mouseout", function () {  // Mausevent beim Verlassen eines Elements
+                    d3.select("body").selectAll(".tooltip").remove(); // Löschen des Tooltips (Um Duplikate zu vermeiden)
+                });
+        }
+    }
+
+    // Nutzen der Breitensuche, um Groesse eines Ordners zu berechnen
+    /**
+     * @return {number} // Rueckgabetyp festlegen (um Fehler/Warnungen zu vermeiden)
+     */
+    function BFS_Size(graph, startKnoten) {
+        // Ueberpruefen, ob angegebener Startknoten in "graph" enthalten ist, um Fehler zu vermeiden
+        if (!(startKnoten in graph)) {
+            console.log("%cFehler: Breitensuche konnte nicht durchgefuehrt werden.", "color: crimson");
+            console.log("%cDer angegebene Startknoten \"%c" + startKnoten + "%c\" existiert nicht!", "color: #34495E", "color: #3498DB", "color: #34495E");
+            return 0;
+        }
+
+
+        // Anlegen von Arrays zum Speichern der Informationen, welche bei der Breitensuche auftreten
+        let momentaneKnoten = [];
+        let adjKnoten = graph[startKnoten]; // Abrufen und Speichern der adjazenten Knoten des Startknotens
+        let size = 0; // Setze Groesse auf 0
+
+        // Hinzufuegen der adjazenten Knoten (Knotenname + Ebene) des Startknotens zur Liste der "momentan entdeckten & noch nicht besuchten Knoten"
+        for (let i = 0; i < adjKnoten.length; i++) {
+            momentaneKnoten.push([adjKnoten[i]]);
+        }
+
+        // Solange jeden "momentan entdeckten & noch nicht besuchten Knoten", bis alle Knoten besucht wurden
+        while (momentaneKnoten.length > 0) {
+            let neuerKnoten = momentaneKnoten.shift(); // Herausloeschen des 1. Elements (= aktuell zu bearbeitender Knoten) aus MomentaneKnoten-Liste
+
+            let knotenId = neuerKnoten[0][0]; // Name des aktuellen Knotens abrufen & speichern
+            adjKnoten = graph[knotenId]; // Adjazente Knoten des aktuellen Knotens speichern
+
+            if (neuerKnoten[0][1] !== undefined) { // Pruefen, ob Element ein Ordner ist (falls ja -> nicht mit in die Groesse einbeziehen)
+                size += neuerKnoten[0][1];
+            }
+
+            // Hinzufuegen der adjazenten Knoten (Knotenname + Ebene) des aktuellen Knotens zur Liste der "momentan entdeckten & noch nicht besuchten Knoten"
+            for (let i = 0; i < adjKnoten.length; i++) {
+                momentaneKnoten.push([adjKnoten[i]]);
+            }
+        }
+        return size; // Rueckgabe der berechneten Groesse
+    }
+
+    // Ausfuehren der Breitensuche mit der Startknoten "Start" + Zeichnen des Sunburst-Diagramms
+    BFS(graphDict, "Start");
+
+</script>
+
+</body>
+</html>
